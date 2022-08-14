@@ -295,8 +295,8 @@ class MissionClass:
         pitot tube the airplanes measure the pressure and with that they can put it into
         the equation and solve for the height.
 
-        However, gravity is not the same at different altitudes and changes with respect
-        to the altitude. It is very difficult for an airplane to measure gravity in the air.
+        However, gravity is not the same at dself.iFFerent altitudes and changes with respect
+        to the altitude. It is very dself.iFFicult for an airplane to measure gravity in the air.
         Therefore airplanes generally measure geopotential altitude. The geopotential
         altitude uses gravity at sea level and takes it to be constant. Whereas geometric
         altitude uses gravity at the point of measurement.
@@ -570,9 +570,9 @@ class MissionClass:
             ix = len(x) - 2
         if j0 == len(y) - 1:
             jx = len(y) - 2
-        if 0 < i0 < len(x) - 1:
+        if -1 < i0 < len(x) - 1:
             ix = i0
-        if 0 < j0 < len(y) - 1:
+        if -1 < j0 < len(y) - 1:
             jx = j0
 
         new_z = [[z[ix][jx],z[ix][jx+1]],[z[ix+1][jx],z[ix+1][jx+1]]]
@@ -599,7 +599,8 @@ class MissionClass:
         # Fix data to put into interp2d function
         xar = self.machtrim[:self.nmach]
         yar = self.AoATrim[:self.nAoA]
-        zar = self.CLtrim[:self.nmach][:self.nAoA]
+        # List comprehension of the z array to take the first n values from the each row
+        zar = np.array([i[:self.nAoA] for i in self.CLtrim[:self.nmach]])
 
         # Remove nans from z array then reshape it so it is a 2d array again
         zar = (zar[~np.isnan(zar)]).reshape(self.nmach,self.nAoA)
@@ -613,7 +614,8 @@ class MissionClass:
         # Fix data to put into interp2d function
         xar = self.machtrim[:self.nmach]
         yar = self.CLtrim[:self.nAoA]
-        zar = self.CDtrim[:self.nmach][:self.nAoA]
+        # List comprehension of the z array to take the first n values from the each row
+        zar = np.array([i[:self.nAoA] for i in self.CDtrim[:self.nmach]])
 
         # Remove nans from z array then reshape it so it is a 2d array again
         zar = (zar[~np.isnan(zar)]).reshape(self.nmach,self.nAoA)
@@ -625,7 +627,8 @@ class MissionClass:
         # Fix data to put into interp2d function
         xar = self.machtrim[:self.nmach]
         yar = self.CLtrim[:self.nAoA]
-        zar = self.AoATrim[:self.nmach][:self.nAoA]
+        # List comprehension of the z array to take the first n values from the each row
+        zar = np.array([i[:self.nAoA] for i in self.AoATrim[:self.nmach]])
 
         # Remove nans from z array then reshape it so it is a 2d array again
         zar = (zar[~np.isnan(zar)]).reshape(self.nmach,self.nAoA)
@@ -633,10 +636,6 @@ class MissionClass:
         iAoA = self.interp2d(xar,yar,zar,Mach,CL)
         return iAoA
 
-
-
-
-    #### Clean Up Functions here, then paste them in
     def interpolateTSFC(self,Mach, Alt, THRUST):
 
         if THRUST == 0: 
@@ -650,10 +649,11 @@ class MissionClass:
 
         self.PLA = PLA0
 
-        if iFF / t0 > 999:
+        if self.iFF / t0 > 999:
             return 999
 
     def interpolateThrust(self,Mach, Alt, PLA):
+        # This function is directly out of the VBA file. Do not want to make a 3 way interpolator just yet...
 
         # outofbounds self.flag
         # = 0 : data o.k.
@@ -665,14 +665,14 @@ class MissionClass:
 
 
         if self.machprop[0] > Mach or self.machprop[-1] < Mach: 
-            iFF = 99999
-            return 0.001,iFF
+            self.iFF = 99999
+            return 0.001
         if self.altprop[0] > Alt or self.altprop[-1] < Alt: 
-            iFF = 99999
-            return 0.001,iFF
+            self.iFF = 99999
+            return 0.001
         if self.plaprop[0] > PLA or self.plaprop[-1] < PLA: 
-            iFF = 99999
-            return 0.001,iFF
+            self.iFF = 99999
+            return 0.001
         
         i0,j0,k0 = 1,1,1
         
@@ -705,9 +705,8 @@ class MissionClass:
         # if the lower hinge point in the interp is bad.... then the whole point is bad
         # 10:
         if self.thrustprop[i0, j0, k0] < -990 or self.thrustprop[i0 + 1, j0, k0] < -990 or self.thrustprop[i0, j0 + 1, k0] < -990:
-            interpolateThrust = 0.0001
-            iFF = 999999
-            return 0.0001,iFF
+            self.iFF = 999999
+            return 0.0001
 
         deltamach = (Mach - self.machprop[i0])
         if self.thrustprop[i0 + 1, j0, k0] == -999:
@@ -719,8 +718,8 @@ class MissionClass:
         deltapla = (PLA - self.plaprop[k0 - 1])
 
         if k0 == 0:
-            iFF = 999999
-            return 0.0001,iFF
+            self.iFF = 999999
+            return 0.0001
 
         # Weighted Interpolation Based Upon Mach
         fx0 = deltamach / (self.machprop[i0 + 1] - self.machprop[i0])
@@ -751,4 +750,20 @@ class MissionClass:
         self.iFF = total_ff
         
         return total_thrust
+
+    def interpolateReynoldsNumberEffect(self,Mach,Alt):
+        # Fix data to put into interp2d function
+        xar = self.machRe[:self.nmach]
+        yar = self.AltRe[:self.nalt]
+        # List comprehension of the z array to take the first n values from the each row
+        zar = np.array([i[:self.nalt] for i in self.DeltaCDRe[:self.nmach]])
+        
+        # Remove nans from z array then reshape it so it is a 2d array again
+        zar = (zar[~np.isnan(zar)]).reshape(self.nmach,self.nalt)
+
+        iRe = self.interp2d(xar,yar,zar,Mach,Alt)
+        return iRe
+
+
+    #### Clean Up Functions here, then paste them in
     ####

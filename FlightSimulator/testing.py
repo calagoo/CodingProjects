@@ -8,9 +8,10 @@ st = time()
 
 mission = MissionClass(files)
 
-tx,ty = 1,.4
+tx,ty = 1,30000
 
-print(mission.interpolateAoA(tx,ty))
+# print(mission.interpolateCL(tx,ty))
+print(mission.interpolateReynoldsNumberEffect(tx,ty))
 
 et = time()
 
