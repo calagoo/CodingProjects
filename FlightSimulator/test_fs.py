@@ -1,5 +1,5 @@
 # from fsHeader import *
-from fsHeader_class import *
+from fsHeader import *
 class files:
     aero_file = "D:/CollegeAssignments/2021Fall/AEE468-Aircraft_Systems_Design/X15 Data/x15-aerodata.out"
     prop_file = "D:/CollegeAssignments/2021Fall/AEE468-Aircraft_Systems_Design/X15 Data/ISP235sec-rocket-engine.txt"
@@ -11,7 +11,7 @@ mission = MissionClass(files)
 tx,ty = 1,30000
 
 # print(mission.interpolateCL(tx,ty))
-print(mission.interpolateReynoldsNumberEffect(tx,ty))
+print(mission.interpolateCLmax(1))
 
 et = time()
 
