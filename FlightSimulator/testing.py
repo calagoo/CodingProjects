@@ -7,7 +7,7 @@ class files:
 st = time()
 
 mission = MissionClass(files)
-print(mission.interpolateCL(.5999,5))
+print(mission.interpolateCL(.6,4))
 
 et = time()
 

@@ -1,6 +1,8 @@
 import numpy as np
+import pandas as pd
 import sys
 import os
+from scipy import interpolate
 from time import time
 
 os.system("cls")
@@ -527,24 +529,55 @@ class MissionClass:
             return self.CDtrim[i0][j0] + (deltamach * dCDdmach) + (deltaCL2 * dCDdCL2)
 
     def interpolateCL(self,Mach,AoA):
+        xar = self.machtrim[:self.nmach]
+        yar = self.AoATrim[:self.nAoA]
+        zar = self.CLtrim[:self.nmach][:self.nAoA]
+
+        print(xar)
+        print(yar)
+        print(zar)
+
+        self.interp2d(xar,yar,zar,Mach,AoA)
+
+
+        # if self.machtrim[0] >= Mach: # Mach smaller than maxtrim_min
+        #     i0 = -1
+        # elif self.machtrim[self.nmach-1] <= Mach: # Mach bigger than maxtrim_max
+        #     i0 = self.nmach - 1
+        # else:
+        #     for i in np.arange(0,self.nmach-1):
+        #         if Mach >= self.machtrim[i] and Mach < self.machtrim[i + 1]:
+        #             i0 = i
         
-        if self.machtrim[0] >= Mach: # Mach smaller than maxtrim_min
-            i0 = 0
-        elif self.machtrim[self.nmach-1] <= Mach: # Mach bigger than maxtrim_max
-            i0 = self.nmach - 1
-        else:
-            for i in np.arange(0,self.nmach-1):
-                if Mach >= self.machtrim[i] and Mach < self.machtrim[i + 1]:
-                    i0 = i
+        # if self.AoATrim[i0][0] >= AoA:
+        #     j0 = -1
+        # elif self.AoATrim[i0][self.nAoA-1] <= AoA:
+        #     j0 = self.nAoA - 1
+        # else:
+        #     for j in np.arange(0,self.nAoA-1):
+        #         if AoA >= self.AoATrim[i0][j] and AoA < self.AoATrim[i0][j + 1]:
+        #             j0 = j
         
-        if self.AoATrim[i0][0] >= AoA:
-            j0 = 0
-        elif self.AoATrim[i0][self.nAoA-1] <= AoA:
-            j0 = self.nAoA - 1
-        else:
-            for j in np.arange(0,self.nAoA-1):
-                if AoA >= self.AoATrim[i0][j] and AoA < self.AoATrim[i0][j + 1]:
-                    j0 = j
+        # xar = []
+        # yar = []
+        # zar = []
+        # x = self.machtrim
+        # x = x[~np.isnan(x)]
+        # y = self.AoATrim
+        # y = y[~np.isnan(y)]
+        # z = self.CLtrim
+        # z = z[~np.isnan(z)]
+
+        # xar = x
+        # yar = y[:self.nAoA]
+        # zar = z
+        # if 0 <= i0 < self.nmach-1 and 0 <= j0 < self.nAoA-1:
+        #     iCL = self.interp2d(xar,yar,zar,Mach,AoA,method = "interp")
+        # else:
+        #     iCL = self.interp2d(xar,yar,zar,Mach,AoA,method = "extrap")
+
+        # print('INTERP:')
+        # print(iCL)
         
         # if self.machtrim[1] >= Mach:
         #     i0 = 1
@@ -584,8 +617,60 @@ class MissionClass:
 
 
     #### Clean Up Functions here, then paste them in
+    def interp2d(self,x,y,z,a,b):
+        if x[0] >= a:
+            i0 = -1
+        elif x[-1] <= a:
+            i0 = len(x) - 1
+        else:
+            i0 = np.where(x==(max(list(filter(lambda i: i <= a, x)))))
 
+        if y[0] >= b:
+            j0 = -1
+        elif y[-1] <= b:
+            j0 = len(y) - 1
+        else:
+            j0 = np.where(y==(max(list(filter(lambda i: i <= b, y)))))
 
+        new_x = x
+        if i0 == -1: 
+            new_x = [x[0],x[1]]
+        elif i0 == len(x) - 1:
+            new_x = [x[-2],x[-1]]
+        else:
+            new_x = [x[i0],x[i0+1]]
 
+        new_y = y
+        if j0 == -1: 
+            new_y = [y[0],y[1]]
+        elif j0 == len(y) - 1:
+            new_y = [y[-2],y[-1]]
+        else:
+            new_y = [y[j0],y[j0+1]]
+
+        new_z = z
+        if i0 == -1 or j0 == -1:
+            new_z = [[z[0][0],z[0][1]],[z[1][0],z[1][1]]]
+        elif i0 == len(x) - 1 or j0 == len(y) - 1:
+            new_z = [[z[-2][-2],z[-2][-1]],[z[-1][-2],z[-1][-1]]]
+        else:
+            new_z = [[z[i0][j0],z[i0][j0+1]],[z[i0+1][j0],z[i0+1][j0+1]]]
+
+        Q11 = new_z[0][0]
+        Q12 = new_z[0][1]
+        Q21 = new_z[1][0]
+        Q22 = new_z[1][1]
+
+        x1 = new_x[0]
+        x2 = new_x[1]
+        y1 = new_y[0]
+        y2 = new_y[1]
+
+        # find nearest points
+        r1 = lambda x : (Q11 * (x2 - x) / (x2 - x1)) + (Q21 * (x - x1) / (x2 - x1))
+        r2 = lambda x : (Q12 * (x2 - x) / (x2 - x1)) + (Q22 * (x - x1) / (x2 - x1))
+        p = lambda x,y: (r1(x)*(y2 - y) / (y2 - y1)) + (r2(x)*(y - y1) / (y2 - y1))
+
+        return p(a,b)
 
     ####
