@@ -7,10 +7,14 @@ class files:
 st = time()
 
 mission = MissionClass(files)
-print(mission.interpolateCL(.6,4))
+
+tx,ty = 1,.4
+
+print(mission.interpolateAoA(tx,ty))
 
 et = time()
 
-
-
+# MACH     ALFA      CL      CD
+# 0.1		1	0.05965	0.06399
+# 0.1		2.5	0.1489	0.06945
 print(f"{round(et-st,5)} seconds to run")

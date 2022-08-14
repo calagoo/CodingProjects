@@ -497,140 +497,53 @@ class MissionClass:
 
     ################# Interpolations #################
 
-    def interpolateCD(self,Mach, CL):
-
-        if self.machtrim[1] >= Mach:
-            i0 = 1
-        else:
-            if self.machtrim[self.nmach] <= Mach:
-                i0 = self.nmach - 1
-            else:
-                for i in np.arange(0, self.nmach - 1):
-                    if Mach >= self.machtrim[i] and Mach < self.machtrim[i + 1]:
-                        i0 = i
-
-        if CL < self.CLtrim[i0][1]:
-            j0 = 1
-        else:
-            j0 = self.nAoA - 1
-            for j in np.arange(0, self.nAoA - 1):
-                if CL >= self.CLtrim[i0][j] and CL < self.CLtrim[i0][j+1]:
-                    j0 = j
-        
-        deltamach = (Mach - self.machtrim[i0])
-        dCDdmach = (self.CDtrim[i0 + 1][j0] - self.CDtrim[i0][j0]) / (self.machtrim[i0 + 1] - self.machtrim[i0])
-
-        deltaCL2 = (CL - self.CLtrim[i0][j0]) ** 2
-        dCDdCL2 = (self.CDtrim[i0][j0 + 1] - self.CDtrim[i0][j0]) / (self.CLtrim[i0][j0 + 1] - self.CLtrim[i0][j0]) ** 2
-
-        if j0 == 0 or Mach > 4:
-            return 99
-        else:
-            return self.CDtrim[i0][j0] + (deltamach * dCDdmach) + (deltaCL2 * dCDdCL2)
-
-    def interpolateCL(self,Mach,AoA):
-        xar = self.machtrim[:self.nmach]
-        yar = self.AoATrim[:self.nAoA]
-        zar = self.CLtrim[:self.nmach][:self.nAoA]
-
-        print(xar)
-        print(yar)
-        print(zar)
-
-        self.interp2d(xar,yar,zar,Mach,AoA)
-
-
-        # if self.machtrim[0] >= Mach: # Mach smaller than maxtrim_min
-        #     i0 = -1
-        # elif self.machtrim[self.nmach-1] <= Mach: # Mach bigger than maxtrim_max
-        #     i0 = self.nmach - 1
-        # else:
-        #     for i in np.arange(0,self.nmach-1):
-        #         if Mach >= self.machtrim[i] and Mach < self.machtrim[i + 1]:
-        #             i0 = i
-        
-        # if self.AoATrim[i0][0] >= AoA:
-        #     j0 = -1
-        # elif self.AoATrim[i0][self.nAoA-1] <= AoA:
-        #     j0 = self.nAoA - 1
-        # else:
-        #     for j in np.arange(0,self.nAoA-1):
-        #         if AoA >= self.AoATrim[i0][j] and AoA < self.AoATrim[i0][j + 1]:
-        #             j0 = j
-        
-        # xar = []
-        # yar = []
-        # zar = []
-        # x = self.machtrim
-        # x = x[~np.isnan(x)]
-        # y = self.AoATrim
-        # y = y[~np.isnan(y)]
-        # z = self.CLtrim
-        # z = z[~np.isnan(z)]
-
-        # xar = x
-        # yar = y[:self.nAoA]
-        # zar = z
-        # if 0 <= i0 < self.nmach-1 and 0 <= j0 < self.nAoA-1:
-        #     iCL = self.interp2d(xar,yar,zar,Mach,AoA,method = "interp")
-        # else:
-        #     iCL = self.interp2d(xar,yar,zar,Mach,AoA,method = "extrap")
-
-        # print('INTERP:')
-        # print(iCL)
-        
-        # if self.machtrim[1] >= Mach:
-        #     i0 = 1
-        # else:
-        #     if self.machtrim[self.nmach] <= Mach:
-        #         i0 = self.nmach - 1
-        #     else:
-        #         for i in np.arange(0, self.nmach - 1):
-        #             if Mach >= self.machtrim[i] and Mach < self.machtrim[i + 1]:
-        #                 i0 = i
-        # x3 = (Mach - self.machtrim[i0]) / (self.machtrim[i0 + 1] - self.machtrim[i0])
-        
-        # if AoA < self.AoATrim[i0][1]:
-        #     j0 = 1
-        # else:
-        #     j0 = self.nAoA - 1
-        #     for j in np.arange(0, self.nAoA - 1):
-        #         if AoA >= self.AoATrim[i0][j] and AoA < self.AoATrim[i0][j+1]:
-        #             j0 = j
-        # x1 = (AoA - self.AoATrim[i0][j0]) / (self.AoATrim[i0][j0+1] - self.AoATrim[i0][j0])
-        # print(self.CLtrim[i0][j0])
-
-        # if AoA < self.AoATrim[i0 + 1,1]:
-        #     j1 = 1
-        # else:
-        #     j1 = self.nAoA - 1
-        #     for j in np.arange(0, self.nAoA - 1):
-        #         if AoA >= self.AoATrim[i0+1][j] and AoA < self.AoATrim[i0+1][j+1]:
-        #             j1 = j
-        # x2 = (AoA - self.AoATrim[i0 + 1, j1]) / (self.AoATrim[i0 + 1, j1 + 1] - self.AoATrim[i0 + 1, j1])
-
-        # i1 = x1  * (self.CLtrim[i0][j0+1] - self.CLtrim[i0][j0] + self.CLtrim[i0][j0])
-        # i2 = x2  * (self.CLtrim[i0+1][j1+1] - self.CLtrim[i0+1][j1] + self.CLtrim[i0+1][j1])
-
-
-        # return i1 + x3 * (i2-i1)
-
-
-    #### Clean Up Functions here, then paste them in
     def interp2d(self,x,y,z,a,b):
+        '''
+        A 2D interpolation function that takes in:
+        x : 1D array
+        y : 1D or 2D array
+        z : 2D array
+
+        a : interpolation value 1
+        b : interpolation value 2
+
+        Currently the method of interpolation is only Bilinear
+        '''
+        # Check x,y,z
+        if len(list(np.shape(x))) > 1:
+            print("ERROR: x must be a 1D array")
+            return
+        if len(list(np.shape(y))) > 2:
+            print("ERROR: y must be a 1D or 2D array")
+            return
+        if len(list(np.shape(z))) != 2:
+            print("ERROR: z must be a 2D array")
+            return
+
         if x[0] >= a:
             i0 = -1
         elif x[-1] <= a:
             i0 = len(x) - 1
         else:
-            i0 = np.where(x==(max(list(filter(lambda i: i <= a, x)))))
+            # This line filters the x list by values less than a.
+            # it then finds the max value of the new list and finds where it is in the original array
+            i0 = np.where(x==(max(list(filter(lambda i: i <= a, x)))))[0][0]
+
+        # Check y
+        if len(list(np.shape(y))) > 1:
+            if i0 == -1:
+                y = y[0]
+            else:
+                y = y[i0]
+        
+        y = y[~np.isnan(y)]
 
         if y[0] >= b:
             j0 = -1
         elif y[-1] <= b:
             j0 = len(y) - 1
         else:
-            j0 = np.where(y==(max(list(filter(lambda i: i <= b, y)))))
+            j0 = np.where(y==(max(list(filter(lambda i: i <= b, y)))))[0][0]
 
         new_x = x
         if i0 == -1: 
@@ -648,14 +561,23 @@ class MissionClass:
         else:
             new_y = [y[j0],y[j0+1]]
 
-        new_z = z
-        if i0 == -1 or j0 == -1:
-            new_z = [[z[0][0],z[0][1]],[z[1][0],z[1][1]]]
-        elif i0 == len(x) - 1 or j0 == len(y) - 1:
-            new_z = [[z[-2][-2],z[-2][-1]],[z[-1][-2],z[-1][-1]]]
-        else:
-            new_z = [[z[i0][j0],z[i0][j0+1]],[z[i0+1][j0],z[i0+1][j0+1]]]
+        new_z = z[0]
+        if i0 == -1:
+            ix = 0
+        if j0 == -1:
+            jx = 0
+        if i0 == len(x) - 1:
+            ix = len(x) - 2
+        if j0 == len(y) - 1:
+            jx = len(y) - 2
+        if 0 < i0 < len(x) - 1:
+            ix = i0
+        if 0 < j0 < len(y) - 1:
+            jx = j0
 
+        new_z = [[z[ix][jx],z[ix][jx+1]],[z[ix+1][jx],z[ix+1][jx+1]]]
+
+        # Setting up in bilinear interpolation format from: https://x-engineer.org/bilinear-interpolation/
         Q11 = new_z[0][0]
         Q12 = new_z[0][1]
         Q21 = new_z[1][0]
@@ -666,11 +588,167 @@ class MissionClass:
         y1 = new_y[0]
         y2 = new_y[1]
 
-        # find nearest points
         r1 = lambda x : (Q11 * (x2 - x) / (x2 - x1)) + (Q21 * (x - x1) / (x2 - x1))
         r2 = lambda x : (Q12 * (x2 - x) / (x2 - x1)) + (Q22 * (x - x1) / (x2 - x1))
         p = lambda x,y: (r1(x)*(y2 - y) / (y2 - y1)) + (r2(x)*(y - y1) / (y2 - y1))
 
         return p(a,b)
 
+    def interpolateCL(self,Mach,AoA):
+
+        # Fix data to put into interp2d function
+        xar = self.machtrim[:self.nmach]
+        yar = self.AoATrim[:self.nAoA]
+        zar = self.CLtrim[:self.nmach][:self.nAoA]
+
+        # Remove nans from z array then reshape it so it is a 2d array again
+        zar = (zar[~np.isnan(zar)]).reshape(self.nmach,self.nAoA)
+
+        iCL = self.interp2d(xar,yar,zar,Mach,AoA)
+        return iCL
+
+    def interpolateCD(self,Mach,CL):
+        if Mach > 4:
+            return 99
+        # Fix data to put into interp2d function
+        xar = self.machtrim[:self.nmach]
+        yar = self.CLtrim[:self.nAoA]
+        zar = self.CDtrim[:self.nmach][:self.nAoA]
+
+        # Remove nans from z array then reshape it so it is a 2d array again
+        zar = (zar[~np.isnan(zar)]).reshape(self.nmach,self.nAoA)
+
+        iCD = self.interp2d(xar,yar,zar,Mach,CL)
+        return iCD
+
+    def interpolateAoA(self,Mach, CL):
+        # Fix data to put into interp2d function
+        xar = self.machtrim[:self.nmach]
+        yar = self.CLtrim[:self.nAoA]
+        zar = self.AoATrim[:self.nmach][:self.nAoA]
+
+        # Remove nans from z array then reshape it so it is a 2d array again
+        zar = (zar[~np.isnan(zar)]).reshape(self.nmach,self.nAoA)
+
+        iAoA = self.interp2d(xar,yar,zar,Mach,CL)
+        return iAoA
+
+
+
+
+    #### Clean Up Functions here, then paste them in
+    def interpolateTSFC(self,Mach, Alt, THRUST):
+
+        if THRUST == 0: 
+            return 999
+        
+        for PLA0 in  np.arange(self.maxPLA, self.minPLA,-0.01):
+            PLA0 = int(PLA0 * 100 + 0.5) / 100
+            t0 = self.interpolateThrust(Mach, Alt, PLA0)
+            if t0 <= THRUST:
+                break
+
+        self.PLA = PLA0
+
+        if iFF / t0 > 999:
+            return 999
+
+    def interpolateThrust(self,Mach, Alt, PLA):
+
+        # outofbounds self.flag
+        # = 0 : data o.k.
+        # = 1 : data marginal, overspeed
+        # = 2 : data marginal, overalt
+        # = 3 : data corrupted, out-of-bounds
+
+        self.flag = 0
+
+
+        if self.machprop[0] > Mach or self.machprop[-1] < Mach: 
+            iFF = 99999
+            return 0.001,iFF
+        if self.altprop[0] > Alt or self.altprop[-1] < Alt: 
+            iFF = 99999
+            return 0.001,iFF
+        if self.plaprop[0] > PLA or self.plaprop[-1] < PLA: 
+            iFF = 99999
+            return 0.001,iFF
+        
+        i0,j0,k0 = 1,1,1
+        
+        if self.machprop[-1] <= Mach:
+            i0 = self.nmachE - 2             ## CHECK HERE
+            self.flag = 1
+        else:
+            for i in np.arange(0, self.nmachE - 2):
+                if self.machprop[i] <= Mach and self.machprop[i + 1] > Mach:
+                    i0 = i
+
+        if self.altprop[self.naltE] <= Alt:
+            j0 = self.naltE - 2
+            self.flag = 2
+        else:
+            for j in np.arange(0,self.naltE - 2):
+                if self.altprop[j] <= Alt and self.altprop[j + 1] > Alt:
+                    j0 = j
+        
+        if PLA == self.plaprop[1]:
+            k0 = 2 # GoTo 10
+        elif PLA == self.plaprop[self.nplaE]:
+            k0 = self.nplaE # GoTo 10
+        else:
+            k0 = 2
+            for K in np.arange(2, self.nplaE):
+                if self.plaprop[K - 1] < PLA and self.plaprop[K] >= PLA:
+                    k0 = K
+        
+        # if the lower hinge point in the interp is bad.... then the whole point is bad
+        # 10:
+        if self.thrustprop[i0, j0, k0] < -990 or self.thrustprop[i0 + 1, j0, k0] < -990 or self.thrustprop[i0, j0 + 1, k0] < -990:
+            interpolateThrust = 0.0001
+            iFF = 999999
+            return 0.0001,iFF
+
+        deltamach = (Mach - self.machprop[i0])
+        if self.thrustprop[i0 + 1, j0, k0] == -999:
+            dthrustdMach = 0
+            dffdmach = 0
+            self.flag = 1
+            dtsfcdmach = 0
+        deltaalt = (Alt - self.altprop[j0])
+        deltapla = (PLA - self.plaprop[k0 - 1])
+
+        if k0 == 0:
+            iFF = 999999
+            return 0.0001,iFF
+
+        # Weighted Interpolation Based Upon Mach
+        fx0 = deltamach / (self.machprop[i0 + 1] - self.machprop[i0])
+        fx1 = deltaalt / (self.altprop[j0 + 1] - self.altprop[j0])
+        fx2 = deltapla / (self.plaprop[k0] - self.plaprop[k0 - 1])
+                
+        k000 = (1 - fx2) * (1 - fx1) * (1 - fx0)
+        k001 = fx2 * (1 - fx1) * (1 - fx0)
+        k010 = (1 - fx2) * fx1 * (1 - fx0)
+        k011 = fx2 * fx1 * (1 - fx0)
+        k100 = (1 - fx2) * (1 - fx1) * fx0
+        k101 = fx2 * (1 - fx1) * fx0
+        k110 = (1 - fx2) * fx1 * fx0
+        k111 = fx2 * fx1 * fx0
+
+        total_thrust = self.thrustprop[i0, j0, k0 - 1] * k000 + self.thrustprop[i0, j0, k0] * k001 + \
+                        self.thrustprop[i0, j0 + 1, k0 - 1] * k010 + self.thrustprop[i0, j0 + 1, k0] * k011 + \
+                        self.thrustprop[i0 + 1, j0, k0 - 1] * k100 + self.thrustprop[i0 + 1, j0, k0] * k101 + \
+                        self.thrustprop[i0 + 1, j0 + 1, k0 - 1] * k110 + self.thrustprop[i0 + 1, j0 + 1, k0] * k111
+                        
+        total_ff = self.FFprop[i0, j0, k0 - 1] * k000 + self.FFprop[i0, j0, k0] * k001 + \
+                        self.FFprop[i0, j0 + 1, k0 - 1] * k010 + self.FFprop[i0, j0 + 1, k0] * k011 + \
+                        self.FFprop[i0 + 1, j0, k0 - 1] * k100 + self.FFprop[i0 + 1, j0, k0] * k101 + \
+                        self.FFprop[i0 + 1, j0 + 1, k0 - 1] * k110 + self.FFprop[i0 + 1, j0 + 1, k0] * k111
+        
+
+
+        self.iFF = total_ff
+        
+        return total_thrust
     ####
