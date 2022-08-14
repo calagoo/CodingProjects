@@ -18,7 +18,6 @@ class MissionClass:
         self.aero_file = files.aero_file
         self.prop_file = files.prop_file
 
-
         # aero data
         self.machtrim = np.full((50),np.nan)
         self.AoATrim = np.full((50,50),np.nan)
@@ -88,13 +87,13 @@ class MissionClass:
         self.DtoR = 3.14159265359/180
         
         ## Init Functions
-        self.read_aero_data()
-        self.read_propulsion_data()
+        self.read_aero_data(self.aero_file)
+        self.read_propulsion_data(self.prop_file)
 
         ## Check if wind file attached, if so run the "read_wind_data()" function
         if hasattr(files,"wind_file"):
             self.wind_file = files.wind_file
-            self.read_wind_data()
+            self.read_wind_data(self.wind_file)
         else:
             self.wind_file = False
             self.zero_wind_data()
@@ -111,9 +110,9 @@ class MissionClass:
         print("Error reading file:",self.aero_file)
         sys.exit(1)
 
-    def read_aero_data(self):
+    def read_aero_data(self,aero_file):
         try:
-            with open(self.aero_file,'r') as f:
+            with open(aero_file,'r') as f:
                 self.readuntil(f,"* PARSED INPUTS")
                 self.readuntil(f,"* EDET RESULTS")
                 self.readuntil(f,"REFERENCE AREA")
@@ -180,10 +179,10 @@ class MissionClass:
             print("Error reading file:",self.aero_file)
             print(e)
         
-    def read_propulsion_data(self):
+    def read_propulsion_data(self,prop_file):
 
         try:
-            with open(self.prop_file,'r') as f:
+            with open(prop_file,'r') as f:
                 self.readuntil(f,"NPLA")
                 self.nplaE = int(f.readline())
                 self.readuntil(f,"NMACH")
@@ -234,9 +233,9 @@ class MissionClass:
             print("Error reading file:",self.prop_file)
             print(e)
 
-    def read_wind_data(self):
+    def read_wind_data(self,wind_file):
         try:
-            with open(self.wind_file,'r') as f:
+            with open(wind_file,'r') as f:
                 self.readuntil(f,"N_TOKENS")
                 self.naltW = int(f.readline())
                 f.readline()    # Skips two lines
