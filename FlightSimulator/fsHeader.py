@@ -97,7 +97,7 @@ class MissionClass:
         else:
             self.wind_file = False
             self.zero_wind_data()
-            print('No Wind File Present')
+            # print('No Wind File Present')
 
     ## Reading Data Files
     def readuntil(self,file,input_string):
