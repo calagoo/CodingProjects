@@ -58,6 +58,7 @@ class MissionClass:
         self.nplaE = 0
         self.nalfE = 0
         self.Sref = 0
+        self.PLA = 0
         self.Wi = 0
         self.Wf = 0
         self.CLmax = 0
@@ -95,7 +96,7 @@ class MissionClass:
             self.wind_file = files.wind_file
             self.read_wind_data(self.wind_file)
         else:
-            self.wind_file = False
+            self.wind_file = ""
             self.zero_wind_data()
             # print('No Wind File Present')
 
@@ -433,8 +434,8 @@ class MissionClass:
         # StaticTmp in R
         # q_cold in
 
-        unit_con = 25037  # converts ft^2/sec^2 to BTU/lbm
-        h_tot = cp_inf * StaticTmp + (Mach * a) ^ (2) / 2 / unit_con  # BTU/lbm
+        unit_con = 25037  # converts ft**2/sec**2 to BTU/lbm
+        h_tot = cp_inf * StaticTmp + (Mach * a) ** (2) / 2 / unit_con  # BTU/lbm
 
         Tmp_min = 200  # Rankine
         Tmp_max = 3500  # Using a VERY wide range for the search, feel free to tighten up for efficiency
@@ -482,10 +483,10 @@ class MissionClass:
 
         Rn = radius # ft
         Uco = 26082 # ft/sec   this is the circular orbit velocity
-        qo = 17600 / (Rn) ^ 0.5 * (RR) ^ 0.5 * (Mach * a / Uco) ^ 3.15 #BTU/(sec ft^2) # the cold surface heating
-        return qo #BTU/(sec ft^2)
+        qo = 17600 / (Rn) ** 0.5 * (RR) ** 0.5 * (Mach * a / Uco) ** 3.15 #BTU/(sec ft**2) # the cold surface heating
+        return qo #BTU/(sec ft**2)
         #if you wanted a swept cylinder AKA a leading edge
-        #qo = qo * Cos(sweep * DtoR) * Cos(AoA * DtoR) #BTU/(ft^2 sec)# AoA and sweep need to be 0 to be a sphere, when they are non-zero it is a swept cylinder
+        #qo = qo * Cos(sweep * DtoR) * Cos(AoA * DtoR) #BTU/(ft**2 sec)# AoA and sweep need to be 0 to be a sphere, when they are non-zero it is a swept cylinder
 
     def zero_wind_data(self):
         self.naltW = 4
@@ -650,6 +651,7 @@ class MissionClass:
 
         if self.iFF / t0 > 999:
             return 999
+        return self.iFF / t0
 
     def interpolateThrust(self,Mach, Alt, PLA):
         # This function is directly out of the VBA file. Do not want to make a 3 way interpolator just yet...
