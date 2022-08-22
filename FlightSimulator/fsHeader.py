@@ -646,7 +646,9 @@ class MissionClass:
             t0 = self.interpolateThrust(Mach, Alt, PLA0)
             if t0 <= THRUST:
                 break
-
+        else:
+            PLA0 = 0.0001
+        
         self.PLA = PLA0
 
         if self.iFF / t0 > 999:

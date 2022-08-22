@@ -1,32 +1,52 @@
-from fsHeader import *
-from time import sleep,time
 import os
+from fsHeader import *
+from time import sleep, time
+import matplotlib.pyplot as plt
+
+# Todo: 
+# Remove match case so < python3.10 is compatible
+
 
 def MissionCode(files):
-    
+
     # Turns on debug prints
     debug = True
 
-
-    main_simdf = pd.DataFrame(columns=["Time (sec)","Dist (nM)","Wt (lbm)","MACH","Alt (ft)","Q (psf)","KTAS","KCASideal (conflate with KIAS)","AOA","CL","CD","L/D","M(L/D)","Drag (lbf)","Thrust (lbf)","Lin.Acc (ft/s**2)","ROC (ft/min)","percent induced","FF (lb/hr)","gamma (deg)","SR (nM/lbm)","KEAS (nm/hr)","HEADING (deg)","WINDS (nm/hr)","GROUND SPEED (nm/hr)","ESAD (nM)","MODE","PLA","TSFC","STATIC TEMP (R)","STAG TEMP (R)","RAD EQUI TEMP (R)","REF. HEAT. RATE (BTU/FT**2/SEC)","UNIT RE # (/FT)","Nz"])
+    main_simdf = pd.DataFrame(columns=["Time (sec)", "Dist (nM)", "Wt (lbm)", "MACH", "alt (ft)", "Q (psf)", "KTAS", "KCASideal (conflate with KIAS)", "AOA", "CL", "CD", "L/D", "M(L/D)", "Drag (lbf)", "Thrust (lbf)", "Lin.Acc (ft/s**2)", "ROC (ft/min)", "percent induced",
+                              "FF (lb/hr)", "gamma (deg)", "SR (nM/lbm)", "KEAS (nm/hr)", "HEADING (deg)", "WINDS (nm/hr)", "GROUND SPEED (nm/hr)", "ESAD (nM)", "MODE", "PLA", "TSFC", "STATIC TEMP (R)", "STAG TEMP (R)", "RAD EQUI TEMP (R)", "REF. HEAT. RATE (BTU/FT**2/SEC)", "UNIT RE # (/FT)", "Nz"])
     m = MissionClass(files)
-    
-    # variable inits    
+
+    # lists
+    class FlightData:
+        time = []
+        alt = []
+        weight = []
+        mach = []
+        dist = []
+        t_over_50mi = 0
+        t_over_100km = 0
+        t_over_350F = 0
+        t_over_1000F = 0
+        peak_stag_T = 0
+        peak_eq_wall_T = 0
+
+
+    # variable inits
     t = 0
     Wi = 0
 
-    ix= 2 # Possibly fix this, setting to 2 only to comply with VBA script
-    iy= 50
-    iy1= 25
+    ix = 2  # Possibly fix this, setting to 2 only to comply with VBA script
+    iy = 50
+    iy1 = 25
 
     minPLA = 0
     maxPLA = 0
 
     t = 0
     wt = Wi
-    Mach = 0
+    mach = 0
     dmach = 0
-    Alt = 0
+    alt = 0
     AoA = 0
     dh = 0
 
@@ -43,7 +63,7 @@ def MissionCode(files):
     heading = 0
     creditfuelburned = 0
 
-    PLA = maxPLA
+    m.PLA = maxPLA
     THRUST = 0
     TSFC = 999
     drag = 0
@@ -51,19 +71,19 @@ def MissionCode(files):
     CD = 0.0001
     cdincrement = 0
     Nz = 1
-    flag= 0
-    Flag1= 0
+    flag = 0
+    Flag1 = 0
 
-    creditflag= 1
+    creditflag = 1
     linaccel = 0
-    machold = Mach
+    machold = mach
 
     qmax = 9999999
     qmin = 0
 
-    aero_flag= False
-    prop_flag= False
-    first_flag= True
+    aero_flag = False
+    prop_flag = False
+    first_flag = True
 
     fpa = 0
     ESAD = 0
@@ -98,7 +118,7 @@ def MissionCode(files):
 
     loitertime = 0
     alt_flag = 1
-    dt = 1 # Set Default Time Step
+    dt = 1  # Set Default Time Step
 
     tover50mi = 0
     tover100km = 0
@@ -117,20 +137,20 @@ def MissionCode(files):
     creditflag = 0
     starttime = 0
     Wf = 0
-    itr = True # Iteration boolean
+    itr = True  # Iteration boolean
     exitcode = False
-    linenum = 0 
+    linenum = 0
 
     # Begin Primary Loop
-    with open(files.mission_file,'r') as f:
+    with open(files.mission_file, 'r') as f:
         while wt >= Wf and not exitcode:
             itr = True
-            while line:=f.readline():
+            while itr and (line := f.readline()):
                 if debug:
                     print(line)
                 linenum += 1
-                if not itr:
-                    break
+                # if itr is False:
+                #     break
 
                 # Same format as VBA script
                 # Space before and after flight commands
@@ -139,23 +159,30 @@ def MissionCode(files):
                 # Search for comments (leading *)
                 if line.startswith("*"):
                     continue
-
-                if " STOP " in line: # Not sure if continue is the correct line here
+                if " END " in line:
                     itr = False
+                    exitcode = True
+                    print("NORMAL TERMINATION")
+                    break
+
+                if " STOP " in line:  # Not sure if continue is the correct line here
+                    itr = False
+                
                 if " SET " in line:
                     flag = 0
+                
                 if " LOG " in line:
                     print(t)
                     print(wt)
-                    print(Alt)
-                    print((Mach*1000)/1000)
+                    print(alt)
+                    print(mach)
                     print(line)
                     continue
 
-                ## Begin of main instruction set
+                # Begin of main instruction set
                 if " CLIMB " in line:
                     flag = 1
-                    PLA = maxPLA
+                    m.PLA = maxPLA
                     creditflag = 1
                     starttime = t
                     startdist = dist
@@ -171,31 +198,31 @@ def MissionCode(files):
                     startdist = dist
                 if " DESCEND " in line:
                     flag = 1
-                    PLA = minPLA
+                    m.PLA = minPLA
                     creditflag = 1
                     starttime = t
                     startdist = dist
                 if " DESCEND_CONST_MACH " in line:
                     flag = 1
-                    PLA = minPLA
+                    m.PLA = minPLA
                     creditflag = 1
                     starttime = t
                     startdist = dist
                 if " DESCEND_CONST_KIAS " in line:
                     flag = 2
-                    PLA = minPLA
+                    m.PLA = minPLA
                     creditflag = 1
                     starttime = t
                     startdist = dist
                 if " ACCEL " in line:
                     flag = 3
-                    PLA = maxPLA
+                    m.PLA = maxPLA
                     creditflag = 1
                     starttime = t
                     startdist = dist
                 if " DECEL " in line:
                     flag = 3
-                    PLA = minPLA
+                    m.PLA = minPLA
                     creditflag = 1
                     starttime = t
                     startdist = dist
@@ -221,7 +248,7 @@ def MissionCode(files):
                     AoAtarget = 0
                 if " GROUND_RUNUP " in line:
                     flag = 7
-                    PLA = maxPLA
+                    m.PLA = maxPLA
                     creditflag = 1
                     starttime = t
                     startdist = dist
@@ -241,12 +268,12 @@ def MissionCode(files):
                     if " WEIGHT " in line:
                         wt = float(line[len(" WEIGHT "):])
                     if " MACH " in line:
-                        Mach = float(line[len(" MACH "):])
-                        machold = Mach
+                        mach = float(line[len(" MACH "):])
+                        machold = mach
                     if " APU_BURN " in line:
                         APU_burn = float(line[len(" APU_BURN "):])
                     if " ALTITUDE " in line:
-                        Alt = float(line[len(" ALTITUDE "):])
+                        alt = float(line[len(" ALTITUDE "):])
                     if " DROP " in line:
                         wt -= float(line[len(" DROP "):])
                     if " PLA " in line:
@@ -291,7 +318,7 @@ def MissionCode(files):
                         m.read_aero_data(aero_file)
                         if debug:
                             print("Aero File Changed")
-                    
+
                     if " PROP_FILE " in line:
                         prop_file = line[len(" PROP_FILE "):].strip()
                         files.prop_file = prop_file
@@ -318,23 +345,31 @@ def MissionCode(files):
                         bank_rad = bank * np.pi / 180
                     if " NO DISTANCE CREDIT " in line:
                         creditflag = 0
-                    
-                    ## "STOP" Checking and Parsing
+
+                    # "STOP" Checking and Parsing
                     if " STOP " in line:
                         stop_line = line.strip().split(" ")
                         # Checking Format
                         if len(stop_line) != 3:
-                            print("Line Error: ln {} ({})".format(linenum,line.strip()))
+                            print("Line Error: ln {} ({})".format(
+                                linenum, line.strip()))
                         else:
                             if stop_line[0] != "STOP":
-                                print("Line Error: ln {} ({})".format(linenum,line.strip()))
+                                print("Line Error: ln {} ({})".format(
+                                    linenum, line.strip()))
                             if not ("<" in stop_line[1] or ">" in stop_line[1]):
-                                print("Line Error: ln {} ({})".format(linenum,line.strip()))
+                                print("Line Error: ln {} ({})".format(
+                                    linenum, line.strip()))
                             if not stop_line[2].isnumeric():
-                                print("Line Error: ln {} ({})".format(linenum,line.strip()))
+                                print("Line Error: ln {} ({})".format(
+                                    linenum, line.strip()))
                         # Done Checking Format
                         arg = stop_line[1]
                         val = float(stop_line[2])
+
+                        # Reseting Stop Values
+                        stop_time,stop_alt,stop_mach,stop_dist,stop_wt,stop_ROC = 99999,999999,99999,99999,0,999999
+                        stop_kias,stop_batterycharge,stop_gamma,stop_heading_max,stop_heading_min = 999999,0,999,9999,-9999
 
                         # Parsing
                         match arg:
@@ -367,92 +402,96 @@ def MissionCode(files):
                             case "KIAS<":
                                 stop_kias = -val
                         #
-                    ## End of "STOP" Checking and Parsing
+                    # End of "STOP" Checking and Parsing
                     if " CONST_KIAS " in line:
                         constKIAS = float(line[len(" CONST_KIAS "):])
             if flag >= 1:
-                # # Reset Aero and Prop files here.
-                # if aero_flag:
-                #     m.read_aero_data(aero_file)
-                #     aero_flag = False
-                # if prop_flag:
-                #     m.read_propulsion_data(prop_file)
-                #     prop_flag = False
-                
-                # Begin Time Step
-                # Stop Conditions
-                # print(f"{stop_dist  =   }")
-                # print(f"{stop_time  =   }")
-                # print(f"{stop_alt   =   }")
-                # print(f"{stop_mach  =   }")
-                # print(f"{stop_wt    =   }")
-                # print(f"{stop_ROC   =   }")
-                # print(f"{stop_kias  =   }")
-                # print(f"{stop_gamma =   }")
-                # print(flag)
-                ix -= 1 # I leave my steps on the top of my loops. This allows it to loop the same.
+                # I leave my steps on the top of my loops. The -1 allows it to loop the same.
+                ix -= 1
                 itr = True
-                while itr:
-                    if ix%50 and debug: # For Debugging
+                while itr and not exitcode:
+
+                    ## Adding values to lists
+                    FlightData.time.append(t)
+                    FlightData.alt.append(alt)
+                    FlightData.weight.append(wt)
+                    FlightData.mach.append(mach)
+                    FlightData.dist.append(dist)
+                    ##
+                    if THRUST < 5:
                         pass
-                    ix += 1 # Timestep essentially. Used in VBA to set the cell row
+                    if ix % 50 and debug:  # For Debugging
+                        # try:
+                        #     print(f"{THRUST    =    }")
+                        # except:
+                        #     pass
+                        # sleep(.05)
+                        pass
+                    ix += 1  # Timestep essentially. Used in VBA to set the cell row
 
                     # Used in place of a GoTo function
                     bypass = False
 
                     # call Bill Mason's 1976 standard atmosphere
-                    StaticTmp, p, R, a, MU, TS, RR, PP, RM, qm = m.Atmos76(Alt)
+                    StaticTmp, p, R, a, MU, TS, RR, PP, RM, qm = m.Atmos76(alt)
 
                     # calculate q
-                    q = qm * Mach ** 2
+                    q = qm * mach ** 2
                     if q <= 0:
                         q = 0.001       # THIS MAY BE A PROBLEM IN FUTURE - JACK
                         if debug:
                             print("Warning: Dynamic Pressure = {}".format(q))
 
-                    # velocity in kts and Mach
-                    V = (a * Mach) * 3600 / 6080 # knots
-                    vfts = a * Mach
+                    # velocity in kts and mach
+                    V = (a * mach) * 3600 / 6080  # knots
+                    vfts = a * mach
                     velV = vfts * np.sin(GAMMA)
                     velH = vfts * np.cos(GAMMA)
-                        
+
                     KEAS = 661 * np.sqrt(q / 1481)
-                    KCAS = m.calcKCAS(Mach, Alt)
-                    
+                    KCAS = m.calcKCAS(mach, alt)
+
                     # Radius of the earth, cylindrical earth model
-                    ## Todo update to wgs ellipsoid model
-                    radiusearth = 6371.009 * 1000 * 39.4 / 12
+                    # Todo update to wgs ellipsoid model
+                    radius_earth = 6371.009 * 1000 * 39.4 / 12
 
                     # net lift required is that of the weight of the vehicle minus the centrifugal acceleration due to flight speed
-                    netlift = wt * ((1 - vfts ** 2 / (Alt + radiusearth) / 32.174)) + wt * (Nz - 1)  # add to include load factor
-                    CL = (netlift * np.cos(GAMMA) - THRUST * np.sin(np.radians(AoA))) / q / m.Sref # AoA not declared yet !!!
+                    # add to include load factor
+                    netlift = wt * \
+                        ((1 - vfts ** 2 / (alt + radius_earth) / 32.174)) + \
+                        wt * (Nz - 1)
+                    # AoA not declared yet !!!
+                    CL = (netlift * np.cos(GAMMA) - THRUST *
+                          np.sin(np.radians(AoA))) / q / m.Sref
                     if CL < 0:
                         CL = 0
 
-                    CLmaxx = m.interpolateCLmax(Mach)
+                    CLmaxx = m.interpolateCLmax(mach)
                     if CL > CLmaxx:
                         CL = CLmaxx
-                    
+
                     if flag == 5:
                         CL = CLtarget
                     if flag == 6:
-                        CL = m.interpolateCL(Mach,AoAtarget)
+                        CL = m.interpolateCL(mach, AoAtarget)
                     if flag == 7:
                         CL = 0
-                    CD = m.interpolateCD(Mach, CL) + m.interpolateReynoldsNumberEffect(Mach, Alt) + cdincrement
-                    CD0 = m.interpolateCD(Mach, 0) + m.interpolateReynoldsNumberEffect(Mach, Alt) + cdincrement
+                    CD = m.interpolateCD(
+                        mach, CL) + m.interpolateReynoldsNumberEffect(mach, alt) + cdincrement
+                    CD0 = m.interpolateCD(
+                        mach, 0) + m.interpolateReynoldsNumberEffect(mach, alt) + cdincrement
                     pctind = (CD - CD0) / CD
 
-                    vfts = (a * Mach)
+                    vfts = (a * mach)
                     V = vfts * 3600 / 6080
-                    ktas = V # in ktas
-                    KEAS = np.sqrt(q / 1481) * 1116 * 3600 / 6080 # in KEAS
+                    ktas = V  # in ktas
+                    KEAS = np.sqrt(q / 1481) * 1116 * 3600 / 6080  # in KEAS
                     drag = CD * m.Sref * q
-                    AoA = m.interpolateAoA(Mach, CL)
+                    AoA = m.interpolateAoA(mach, CL)
                     if flag == 6:
                         AoA = AoAtarget
 
-                    flag2 = 0 # = 0 level; =1 climb; = 2 accel/decel; =3 combined accel-climb
+                    flag2 = 0  # = 0 level; =1 climb; = 2 accel/decel; =3 combined accel-climb
 
                     match flag:
                         case 1 | 2:
@@ -465,164 +504,190 @@ def MissionCode(files):
                             flag2 = 2
                         case 4:                                             # LEVEL FLIGHT
                             Mode = "LEVEL"
-                            dt = 1  #default for typical aircraft is 1 minute, now 1 -sec
+                            dt = 1  # default for typical aircraft is 1 minute, now 1 -sec
                             flag2 = 0
                         case 5:                                             # CONSTANT CL "GLIDE" - bank angle is enabled!
                             Mode = "CONST_CL (BANK=" + str(bank) + ")"
-                            dt = 1  #default for typical aircraft is 1 minute, now 1 -sec
+                            dt = 1  # default for typical aircraft is 1 minute, now 1 -sec
                             flag2 = 3
                         case 6:                                             # CONSTANT AoA "GLIDE" - bank angle is enabled!
                             Mode = "CONST_AOA (BANK=" + str(bank) + ")"
-                            dt = 1  #default for typical aircraft is 1 minute, now 1 -sec
-                            flag2 = 3                        
+                            dt = 1  # default for typical aircraft is 1 minute, now 1 -sec
+                            flag2 = 3
                         case 7:
                             Mode = "GROUND_RUNUP"
                             dt = 1
                             flag2 = 7
 
                     match flag2:
-                        case 0:# = 0 level
+                        case 0:  # = 0 level
                             THRUST = drag
 
                             dmach = 0
                             dalt = 0
 
-                            T1 = m.interpolateThrust(Mach,Alt,1)*neng
+                            T1 = m.interpolateThrust(mach, alt, 1)*neng
                             if THRUST > T1:
                                 dt = 1
                                 THRUST = T1
-                                dalt = 1 * (a * Mach) * ((THRUST * np.cos(np.radians(AoA)) - drag - netlift * np.sin(GAMMA)) / wt) * dt        # put all energy into climb/descend
-                            
-                            TSFC = m.interpolateTSFC(Mach,Alt,THRUST/neng)
+                                # put all energy into climb/descend
+                                dalt = 1 * \
+                                    (a * mach) * ((THRUST * np.cos(np.radians(AoA)
+                                                                   ) - drag - netlift * np.sin(GAMMA)) / wt) * dt
 
-                        case 1:# = 1 climb
-                            THRUST = m.interpolateThrust(Mach,Alt,m.PLA)*neng       # set fixed power per PLA variable
-                            TSFC = m.interpolateTSFC(Mach, Alt, THRUST / neng)
+                            TSFC = m.interpolateTSFC(mach, alt, THRUST/neng)
+
+                        case 1:  # = 1 climb
+                            # set fixed power per PLA variable
+                            THRUST = m.interpolateThrust(mach, alt, m.PLA)*neng
+                            TSFC = m.interpolateTSFC(mach, alt, THRUST / neng)
                             dmach = 0                                               # hold constant speed
 
                             k0 = 1
-                            if Alt < 36089 and flag == 1:
-                                k0 = 1 / (1 - 0.133184 * Mach ** 2)
-                            if Alt < 36089 and flag == 2:
-                                k0 = 1 / (1 + 0.566816 * Mach ** 2)
-                            if Alt > 36089 and flag == 2:
-                                k0 = 1 / (1 + 0.7 * Mach ** 2)
+                            if alt < 36089 and flag == 1:
+                                k0 = 1 / (1 - 0.133184 * mach ** 2)
+                            if alt < 36089 and flag == 2:
+                                k0 = 1 / (1 + 0.566816 * mach ** 2)
+                            if alt > 36089 and flag == 2:
+                                k0 = 1 / (1 + 0.7 * mach ** 2)
 
                             if flag == 1:
                                 dmach = 0
                             else:
-                                StaticTmp, p, R, a, MU, TS, RR, PP, RM, qm = m.Atmos76(Alt + dh)
-                                dmach = np.sqrt(q / qm) - Mach
-                            
+                                StaticTmp, p, R, a, MU, TS, RR, PP, RM, qm = m.Atmos76(
+                                    alt + dh)
+                                dmach = np.sqrt(q / qm) - mach
+
                             SEThrust = ((THRUST - drag) / wt)
                             if SEThrust > 0:
-                                SEThrust -= gross2net                               # gross to net conversion - 2/9/2017
-                            dalt = k0 * (a * Mach) * SEThrust * dt                  # put all energy into climb/descend
+                                # gross to net conversion - 2/9/2017
+                                SEThrust -= gross2net
+                            # put all energy into climb/descend
+                            dalt = k0 * (a * mach) * SEThrust * dt
 
-                        case 2: # = 2 accel/decel
-                            THRUST = m.interpolateThrust(Mach, Alt, m.PLA) * neng     #   set fixed power per PLA variable
-                            TSFC = m.interpolateTSFC(Mach, Alt, THRUST / neng)
-                            dmach = (THRUST - drag) / wt * 32.2 * dt / a            #   put all energy into accel/decel
+                        case 2:  # = 2 accel/decel
+                            # set fixed power per PLA variable
+                            THRUST = m.interpolateThrust(
+                                mach, alt, m.PLA) * neng
+                            TSFC = m.interpolateTSFC(mach, alt, THRUST / neng)
+                            dmach = (THRUST - drag) / wt * 32.2 * dt / \
+                                a  # put all energy into accel/decel
                             dalt = 0
 
-                        case 3: # = 3 combined accel-climb
-                            THRUST = m.interpolateThrust(Mach, Alt, m.PLA) * neng     # set fixed power per PLA variable
-                            TSFC = m.interpolateTSFC(Mach, Alt, THRUST / neng)
+                        case 3:  # = 3 combined accel-climb
+                            # set fixed power per PLA variable
+                            THRUST = m.interpolateThrust(
+                                mach, alt, m.PLA) * neng
+                            TSFC = m.interpolateTSFC(mach, alt, THRUST / neng)
                             lift = CL * q * m.Sref * np.cos(bank_rad)
                             drag = CD * q * m.Sref
-                            Fvert = lift * np.cos(GAMMA) + THRUST * np.sin(GAMMA + np.radians(AoA)) - drag * np.sin(GAMMA) - wt
-                            Fhorz = THRUST * np.cos(GAMMA + np.radians(AoA)) - drag * np.cos(GAMMA) - lift * np.sin(GAMMA)
+                            Fvert = lift * \
+                                np.cos(GAMMA) + THRUST * np.sin(GAMMA +
+                                                                np.radians(AoA)) - drag * np.sin(GAMMA) - wt
+                            Fhorz = THRUST * \
+                                np.cos(GAMMA + np.radians(AoA)) - drag * \
+                                np.cos(GAMMA) - lift * np.sin(GAMMA)
                             accelV = Fvert / wt  # in gee's
                             accelH = Fhorz / wt  # in gee's
-                            velV = velV + 32.2 * accelV * dt # in ft/sec
-                            velH = velH + 32.2 * accelH * dt # in ft/sec
-                            vfts = np.sqrt(velV * velV + velH * velH) # in ft/sec
-                            dmach = vfts / a - Mach  # change in mach
-                            dh = velV * dt # in ft/sec
+                            velV = velV + 32.2 * accelV * dt  # in ft/sec
+                            velH = velH + 32.2 * accelH * dt  # in ft/sec
+                            vfts = np.sqrt(
+                                velV * velV + velH * velH)  # in ft/sec
+                            dmach = vfts / a - mach  # change in mach
+                            dh = velV * dt  # in ft/sec
                             bypass = True
-                        
+
                         case 7:
-                            THRUST = m.interpolateThrust(Mach, Alt, m.PLA) * neng     # set fixed power per PLA variable
-                            TSFC = m.interpolateTSFC(Mach, Alt, THRUST / neng)      
+                            # set fixed power per PLA variable
+                            THRUST = m.interpolateThrust(
+                                mach, alt, m.PLA) * neng
+                            TSFC = m.interpolateTSFC(mach, alt, THRUST / neng)
                             dalt = 0                                                # hold alt
-                            dmach = (THRUST - drag) / wt * 32.2 * dt / a            # add speed
+                            dmach = (THRUST - drag) / wt * 32.2 * \
+                                dt / a            # add speed
                     if not bypass:
                         # Recalc lift and climbing values
                         if CL == CLmaxx:
                             lift = CL * q * m.Sref
-                            vfreefall = vfreefall + (lift - wt) / wt * 32.2 * dt
+                            vfreefall = vfreefall + \
+                                (lift - wt) / wt * 32.2 * dt
                             dh = dalt + vfreefall * dt
                         else:
                             dh = dalt
                             vfreefall = 0
                         if flag2 == 7:
                             dh = 0
-                    
 
                     roc = (dh / dt) * 60
 
                     # compute delta weight for time step + add fuel burn for APU
                     dw = TSFC * THRUST * dt / 3600 + APU_burn * dt / 3600
-                
+
                     if dw < 0.001:
                         dw = 0.000000001
-                    
-                    Mach = Mach + dmach
-                        
-                        
+
+                    mach = mach + dmach
+
                     if TSFC > 999:
                         print("FATAL ERROR: Engine Table Interpolation Error")
-                    
+
                     # increment state variables
-                    Alt = Alt + dh
+                    alt = alt + dh
                     t = t + dt
                     wt = wt - dw
-                    
+
                     # winds aloft file
                     if m.wind_file != "":
-                        winds = m.interpolateWind(Alt, heading) * 1.689 # winds externally are in nm/hr, internally are in ft/sec
-                        
-                    dist = dist + (a * Mach * dt * np.cos(GAMMA) - winds * dt) / 6080  # in nM <== revised 3/18/2017
-                    ESAD = ESAD + (a * Mach * dt * np.cos(GAMMA)) / 6080   # in nM
+                        # winds externally are in nm/hr, internally are in ft/sec
+                        winds = m.interpolateWind(alt, heading) * 1.689
+
+                    # in nM <== revised 3/18/2017
+                    dist = dist + (a * mach * dt *
+                                   np.cos(GAMMA) - winds * dt) / 6080
+                    ESAD = ESAD + (a * mach * dt * np.cos(GAMMA)
+                                   ) / 6080   # in nM
                     fuelburned = fuelburned + dw
                     FF = dw / dt * 3600
-                    
+
                     # calculate new gamma in radians - limit to 1.4 radians (~80 degrees)
-                    GAMMA = np.arcsin(dh / (a * Mach * dt))  # rev 3/18/2017
+                    GAMMA = np.arcsin(dh / (a * mach * dt))  # rev 3/18/2017
                     if GAMMA > 1.4:
                         GAMMA = 1.4
                     if GAMMA < -1.4:
                         GAMMA = -1.4
                     if creditflag == 1:
-                        creditdist = creditdist + (a * Mach * dt - winds * dt) / 6080 # in nM
+                        creditdist = creditdist + \
+                            (a * mach * dt - winds * dt) / 6080  # in nM
                     if creditflag == 1:
-                        creditfuelburned = creditfuelburned + dw # in lb
-                    
-                    linaccel = ((a * Mach) - (a * machold)) / dt
-                    
+                        creditfuelburned = creditfuelburned + dw  # in lb
+
+                    linaccel = ((a * mach) - (a * machold)) / dt
+
                     if linaccel > 400:
-                        print("Linear Acceleration Over Limit: Stopping...")  # 10/23/2021 - error trap if haywire - T
+                        # 10/23/2021 - error trap if haywire - T
+                        print("Linear Acceleration Over Limit: Stopping...")
                         sys.exit()
-                    machold = Mach
-                    
+                    machold = mach
+
                     # Stop conditions
-                    if dist >= stop_dist: 
+                    if dist >= stop_dist:
                         itr = False
                         print("DISTANCE STOP")
-                    if t >= stop_time: 
+                    if t >= stop_time:
                         itr = False
                         print("TIME STOP")
-                    if stop_alt >= 0 and Alt >= stop_alt:
+                    if stop_alt >= 0 and alt >= stop_alt:
                         itr = False
                         print("ALTITUDE STOP")
-                    if stop_alt < 0 and Alt <= -stop_alt:
+                    if stop_alt < 0 and alt <= -stop_alt:
                         itr = False
-                        exitcode = True
-                        print("ALTITUDE BELOW ZERO")
-                    if stop_mach > 0 and Mach >= stop_mach:
+                        print("ALTITUDE BELOW ZERO:")
+                        if debug:
+                            print(f"{alt} < {-stop_alt}")
+                    if stop_mach > 0 and mach >= stop_mach:
                         itr = False
                         print("MACH STOP")
-                    if stop_mach < 0 and Mach <= -stop_mach:
+                    if stop_mach < 0 and mach <= -stop_mach:
                         itr = False
                         print("MACH BELOW ZERO")
                     if (GAMMA / (np.pi/180)) > stop_gamma:
@@ -645,20 +710,20 @@ def MissionCode(files):
                         print("KEAS STOP")
 
                     # check if nonsense altitudes or speeds (revised 8/30/2021)
-                    if Alt < 0:
-                        Alt = 0
+                    if alt < 0:
+                        alt = 0
                         itr = False
                         exitcode = True
                         print("ALTITUDE BELOW SEA-LEVEL!")
-                    if Alt > 400000:
+                    if alt > 400000:
                         itr = False
                         exitcode = True
                         print("ALTITUDE ABOVE 400K FT!")
-                    if Mach > 4:
+                    if mach > 4:
                         itr = False
                         exitcode = True
                         print("MACH ABOVE 4!")
-                    if Mach < 0:
+                    if mach < 0:
                         itr = False
                         exitcode = True
                         print("MACH BELOW ZERO")
@@ -674,46 +739,106 @@ def MissionCode(files):
                     # Thermodynamics and Heat Transfer - Takahashi & Rodi & Griffin - 2021 #
                     ########################################################################
 
-                    cp, cv, gam = m.PerfectGas(StaticTmp) # Thermally Perfect Gas Model
-                    StagTmp = StaticTmp * (1 + (gam - 1) / 2 * Mach ** 2)
-                    RefHeatRate = m.calcSpherT(1, RR, Mach, a) # 1ft referencesphere
-                    emissivity = 1 # CHANGE ME .. No!
-                    EquiWall = m.calcRadEqu1(RefHeatRate, Mach, a, StaticTmp, emissivity)
-                    Re_ft = RM * Mach
-                    
-                    if Alt > 264000:
-                        tover50mi = tover50mi + dt
-                    if Alt > 328300:
-                        tover100km = tover100km + dt
+                    # Thermally Perfect Gas Model
+                    cp, cv, gam = m.PerfectGas(StaticTmp)
+                    StagTmp = StaticTmp * (1 + (gam - 1) / 2 * mach ** 2)
+                    RefHeatRate = m.calcSpherT(
+                        1, RR, mach, a)  # 1ft referencesphere
+                    emissivity = 1  # CHANGE ME .. No!
+                    EquiWall = m.calcRadEqu1(
+                        RefHeatRate, mach, a, StaticTmp, emissivity)
+                    Re_ft = RM * mach
+
+                    if alt > 264000:
+                        tover50mi += dt
+                    if alt > 328300:
+                        tover100km += dt
                     if EquiWall > (350 + 459):
-                        tover350F = tover350F + dt
+                        tover350F += dt
                     if EquiWall > (1000 + 459):
-                        tover1000F = tover1000F + dt
+                        tover1000F += dt
                     if peakStagT <= StagTmp:
                         peakStagT = StagTmp
                     if peakEqWT <= EquiWall:
                         peakEqWT = EquiWall
 
-                    #### In VBA we begin setting the cells to values here
+
+
+                    # In VBA we begin setting the cells to values here
 
                     if flownMaxWt <= wt:
                         flownMaxWt = wt
                     if flownMaxLift <= lift:
                         flownMaxLift = lift
                     if flownNzmax <= lift / wt:
-                        flownNzmax = lift / wt 
-    return
+                        flownNzmax = lift / wt
+
+
+                    FlightData.t_over_50mi = tover50mi
+                    FlightData.t_over_100km = tover100km
+                    FlightData.t_over_350F = tover350F
+                    FlightData.t_over_1000F = tover1000F
+                    FlightData.peak_stag_T = peakStagT
+                    FlightData.peak_eq_wall_T = peakEqWT
+
+
+                
+
+
+    return FlightData
+
 
 def main():
     os.system('cls')
     st = time()
+
     class files:
         mission_file = "D:/CollegeAssignments/2021Fall/AEE468-Aircraft_Systems_Design/X15 Data/mission.inp"
         aero_file = "D:/CollegeAssignments/2021Fall/AEE468-Aircraft_Systems_Design/X15 Data/x15-aerodata.out"
         prop_file = "D:/CollegeAssignments/2021Fall/AEE468-Aircraft_Systems_Design/X15 Data/ISP235sec-rocket-engine.txt"
-    MissionCode(files)
+    MissionData = MissionCode(files)
     et = time()
+    print('\n-----------RESULTS-----------')
     print(f"File took {round(et-st,5)} seconds to run")
+
+    print()
+    print("MISSION DATA START:")
+    print(f"t_over_50mi         =   {MissionData.t_over_50mi}")
+    print(f"t_over_100km        =   {MissionData.t_over_100km}")
+    print(f"t_over_350F         =   {MissionData.t_over_350F}")
+    print(f"t_over_1000F        =   {MissionData.t_over_1000F}")
+    print(f"peak_stag_T         =   {MissionData.peak_stag_T}")
+    print(f"peak_eq_wall_T      =   {MissionData.peak_eq_wall_T}")
+
+
+    plt.figure()
+    plt.plot(MissionData.alt)
+    plt.title('Altitude')
+    plt.grid()
+
+    plt.figure()
+    plt.plot(MissionData.time)
+    plt.title('time')
+    plt.grid()
+    
+    plt.figure()
+    plt.plot(MissionData.mach)
+    plt.title('mach')
+    plt.grid()
+    
+    plt.figure()
+    plt.plot(MissionData.dist)
+    plt.title('dist')
+    plt.grid()
+    
+    plt.figure()
+    plt.plot(MissionData.weight)
+    plt.title('weight')
+    plt.grid()
+
+    plt.show()
+
+
 
 if __name__ == '__main__':
     main()
